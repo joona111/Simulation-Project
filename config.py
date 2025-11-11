@@ -1,7 +1,7 @@
 import random
 
 CONFIG = {
-    "sim_duration": 8 * 60,
+    "sim_duration": 24 * 60,
     "random_seed": 42,
     "interarrival_mean": 25,
     "prep_units": 3,
@@ -11,9 +11,10 @@ CONFIG = {
     "op_mean": 20,
     "recovery_mean": 40,
     "monitor_interval": 5,
+    "block_or_until_recovery": True,
 }
 
-# --- Random helper functions ---
+
 def expovariate(mean):
     return random.expovariate(1.0 / mean)
 
