@@ -212,24 +212,33 @@ def monitor(env, hospital, interval: float):
 
 # -- alternative versions --
 
+# todo/note: config should be mutable, can be edited mid-simulation.
+# -> return results only
+
+# todo: config to be defined in config.py
+config = {
+    rng: random.expovariate, # possible seed is set separately
+    avgs: [25, 40, 20, 40],
+    rooms: [3, 1, 3]
+}
+
 # generator starts new patient process according to interval distribution
 def patient_generator_mkB(env, resources):
     while True:
         env.process(patient_mkB(env, resources))
-        yield env.timeout(random.expovariate(1/timeavgs[0])) # avg. interarrival 25, exponential distr.
+        yield env.timeout(e(1/timeavgs[0])) # avg. interarrival 25, exponential distr.
 
 
 # individual patient, keeps track of actual service times for each stage: required time and extra waiting
 def patient_mkB(env, resources):
     e = random.expovariate
-    required = [e(1/timeavgs[1]), e(1/timeavgs[2]), e(1/timeavgs[3])] # required times
+    arrived = env.now
     waited = [0,0,0]   # extra waits before each stage
+    required = [e(1/timeavgs[1]), e(1/timeavgs[2]), e(1/timeavgs[3])] # required times
     
     results['wait'].append(waited) # mutable, edited below
     results['req'].append(required)
     
-    mydata[0] = env.now # arrival time
-
     # individual patient path through system
     prep = resources[0].request()
     yield prep # wait prep room
