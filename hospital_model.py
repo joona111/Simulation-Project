@@ -1,5 +1,6 @@
-from config import expovariate
+# -- file that contains process function definitions --
 
+from config import expovariate
 
 def patient_generator(env, hospital, config):
     """
@@ -207,3 +208,48 @@ def monitor(env, hospital, interval: float):
 
         # Wait until the next snapshot.
         yield env.timeout(interval)
+
+
+# -- alternative versions --
+
+# generator starts new patient process according to interval distribution
+def patient_generator_mkB(env, resources):
+    while True:
+        env.process(patient_mkB(env, resources))
+        yield env.timeout(random.expovariate(1/timeavgs[0])) # avg. interarrival 25, exponential distr.
+
+
+# individual patient, keeps track of actual service times for each stage: required time and extra waiting
+def patient_mkB(env, resources):
+    e = random.expovariate
+    required = [e(1/timeavgs[1]), e(1/timeavgs[2]), e(1/timeavgs[3])] # required times
+    waited = [0,0,0]   # extra waits before each stage
+    
+    results['wait'].append(waited) # mutable, edited below
+    results['req'].append(required)
+    
+    mydata[0] = env.now # arrival time
+
+    # individual patient path through system
+    prep = resources[0].request()
+    yield prep # wait prep room
+    yield env.timeout(random.expovariate(1/timeavgs[1])) # prep duration
+    op = resources[1].request()
+    yield op
+    resources[0].release(prep) # op room free, release prep
+    mydata[1] = env.now # record time ended in prep room
+    yield env.timeout(random.expovariate(1/timeavgs[2])) # op duration
+    rec = resources[2].request()
+    mydata[2] = env.now # *required* time in op room
+    yield rec
+    resources[1].release(op) # op free once rec opens
+    mydata[3] = env.now # *total* time in op room
+    yield env.timeout(random.expovariate(1/timeavgs[3])) # op duration
+    resources[2].release(rec) # rec done
+    mydata[4] = env.now
+    
+    # calculate times spent instead of simulation times:
+    mydata[4] -= mydata[3]
+    mydata[3] -= mydata[2]
+    mydata[2] -= mydata[1]
+    mydata[1] -= mydata[0]
