@@ -25,4 +25,5 @@ Simulation-Project/
 ├── hospital_model.py  # Core SimPy processes (patient flow + monitoring)
 ├── run_sim.py         # Entry point to configure and run a simulation
 ├── Hospital.ipynb     # (Optional) Notebook for analysis/visualization
+├── all-in-one.ipynb   # Independent notebook that does not use .py files
 ├── requirements.txt   # Python dependencies
