@@ -281,6 +281,8 @@ def monitor_mkB(env,conf,resu,facilities):
         yield env.timeout(conf['monitor_interval'])
 
 def create_hospital_simulation(env,conf):
+    def refreshme():
+        print('so refreshing')
     # simulation results
     resu = {
         'patient_flow': [], # all flow times for each patient: arrival/prep/op/rec/leave
