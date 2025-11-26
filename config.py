@@ -86,6 +86,7 @@ def seed_all(seed_value: int | None = None) -> None:
 CONFIG_mkB = {
     'seed': None,
     'means': [25, 40, 20, 40], # mean times of all stages: next/prep/op/rec
-    'rooms': [3, 1, 3], # totals of each identical facility: prep/op/rec
+    'total': [5,2,5], # useable + starting slack (unused/offline) capacity for each facility type.
+    'staffed': [3, 1, 3], # useable totals of each identical facility: prep/op/rec
     'monitor_interval': 20 # snapshot interval for non-patient variables, such as queues
 }

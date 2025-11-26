@@ -280,27 +280,48 @@ def monitor_mkB(env,conf,resu,facilities):
         resu['snapshots'].append(snapshot)
         yield env.timeout(conf['monitor_interval'])
 
-def create_hospital_simulation(env,conf):
-    def refreshme():
-        print('so refreshing')
-    # simulation results
-    resu = {
-        'patient_flow': [], # all flow times for each patient: arrival/prep/op/rec/leave
-        'patient_counts': [0,0,0,0], # patient count in: total/prep/op/rec
-        'total_active': [0,0,0], # total time of prep/op/rec
-        'util_active': [0,0,0], # active time of prep/op/rec
-        'snapshots': [] # simulation situation at snapshot times, created by monitor process
-    }
-    # seed the rng
-    random.seed(a=conf['seed']) # doesnt need to check for None, seed() already does
-    # create limited resources
-    facilities = [
-        simpy.Resource(env,capacity=conf['rooms'][0]),
-        simpy.Resource(env,capacity=conf['rooms'][1]),
-        simpy.Resource(env,capacity=conf['rooms'][2])
-    ]
+class hospital_model:
     
-    # create always-on processes
-    env.process(monitor_mkB(env,conf,resu,facilities))
-    env.process(patient_generator_mkB(env,conf,resu,facilities))
-    return resu
+    def __init__(self,conf):
+        self.env = simpy.Environment()
+        self.conf = conf
+        
+        # simulation results
+        self.results = {
+            'patient_flow': [], # all flow times for each patient: arrival/prep/op/rec/leave
+            'patient_counts': [0,0,0,0], # patient count in: total/prep/op/rec
+            'total_active': [0,0,0], # total time of prep/op/rec
+            'util_active': [0,0,0], # active time of prep/op/rec
+            'snapshots': [] # simulation situation at snapshot times, created by monitor process
+        }
+        
+        # seed the rng
+        random.seed(a=conf['seed']) # doesnt need to check for None, seed() already does
+
+        # create limited resources
+        # + request all slack resources to remove them from the useable pool
+        self.facilities = []
+        self.slack_requests = []
+        for i in range(0,len(conf['total'])):
+            self.facilities.append(simpy.Resource(self.env,capacity=conf['total'][i]))
+            facility_slack = []
+            self.slack_requests.append(facility_slack)
+            for j in range(0,conf['total'][i] - conf['staffed'][i]):
+                facility_slack.append(self.facilities[i].request())
+        
+        # create always-on processes
+        self.env.process(monitor_mkB(self.env,conf,self.results,self.facilities))
+        self.env.process(patient_generator_mkB(self.env,conf,self.results,self.facilities))
+
+    # env run for time, also does config check for facilities
+    def run_for(self, time):
+        
+        # refresh facilities according to config at start of time step:
+        for i in range(0,len(self.conf['total'])):
+            for r in range(0,len(self.slack_requests[i])):
+                self.facilities[i].release(self.slack_requests[i].pop()) # pop and release previous slack state
+            for j in range(0,self.conf['total'][i] - self.conf['staffed'][i]):
+                self.slack_requests[i].append(self.facilities[i].request()) # create new slack state
+
+        # continue simulation from current time
+        self.env.run(until= self.env.now + time)
