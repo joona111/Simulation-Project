@@ -77,3 +77,15 @@ def seed_all(seed_value: int | None = None) -> None:
     """
     if seed_value is not None:
         random.seed(seed_value)
+
+
+
+# --- alt. config used in dense.ipynb ---
+
+# using lists instead of named vars to keep it short.
+CONFIG_mkB = {
+    'seed': None,
+    'means': [25, 40, 20, 40], # mean times of all stages: next/prep/op/rec
+    'rooms': [3, 1, 3], # totals of each identical facility: prep/op/rec
+    'monitor_interval': 20 # snapshot interval for non-patient variables, such as queues
+}

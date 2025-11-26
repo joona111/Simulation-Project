@@ -210,55 +210,95 @@ def monitor(env, hospital, interval: float):
         yield env.timeout(interval)
 
 
-# -- alternative versions --
 
-# todo/note: config should be mutable, can be edited mid-simulation.
-# -> return results only
-
-# todo: config to be defined in config.py
-config = {
-    rng: random.expovariate, # possible seed is set separately
-    avgs: [25, 40, 20, 40],
-    rooms: [3, 1, 3]
-}
+# --- alt. versions, used in dense.ipynb ---
+import random
+import simpy
 
 # generator starts new patient process according to interval distribution
-def patient_generator_mkB(env, resources):
+def patient_generator_mkB(env,conf,resu,facilities):
     while True:
-        env.process(patient_mkB(env, resources))
-        yield env.timeout(e(1/timeavgs[0])) # avg. interarrival 25, exponential distr.
-
+        env.process(patient_mkB(env,conf,resu,facilities))
+        yield env.timeout(random.expovariate(1/conf['means'][0]))
 
 # individual patient, keeps track of actual service times for each stage: required time and extra waiting
-def patient_mkB(env, resources):
+def patient_mkB(env,conf,resu,facilities):
+    # minimum processing times for each stage, using config
     e = random.expovariate
-    arrived = env.now
-    waited = [0,0,0]   # extra waits before each stage
-    required = [e(1/timeavgs[1]), e(1/timeavgs[2]), e(1/timeavgs[3])] # required times
+    req_times = [e(1/conf['means'][1]),e(1/conf['means'][2]),e(1/conf['means'][3])]
+
+    flow_times = [env.now, 0, 0, 0, 0] # arrival times at each stage, including release
+    resu['patient_flow'].append(flow_times)
     
-    results['wait'].append(waited) # mutable, edited below
-    results['req'].append(required)
-    
-    # individual patient path through system
-    prep = resources[0].request()
+    # --- individual patient path through system ---
+    # note that patient path logging is also timed, to reduce error in total
+    # * if it was logged at the end, active patients would not affect simulation results
+    # * some error still remains, from not considering partial process completions at result calculation moment.
+
+    prep = facilities[0].request()
+    resu['patient_counts'][0] += 1
     yield prep # wait prep room
-    yield env.timeout(random.expovariate(1/timeavgs[1])) # prep duration
-    op = resources[1].request()
-    yield op
-    resources[0].release(prep) # op room free, release prep
-    mydata[1] = env.now # record time ended in prep room
-    yield env.timeout(random.expovariate(1/timeavgs[2])) # op duration
-    rec = resources[2].request()
-    mydata[2] = env.now # *required* time in op room
-    yield rec
-    resources[1].release(op) # op free once rec opens
-    mydata[3] = env.now # *total* time in op room
-    yield env.timeout(random.expovariate(1/timeavgs[3])) # op duration
-    resources[2].release(rec) # rec done
-    mydata[4] = env.now
+    flow_times[1] = env.now # patient taken to a prep room
+    resu['patient_counts'][1] += 1
     
-    # calculate times spent instead of simulation times:
-    mydata[4] -= mydata[3]
-    mydata[3] -= mydata[2]
-    mydata[2] -= mydata[1]
-    mydata[1] -= mydata[0]
+    yield env.timeout(req_times[0])
+    op = facilities[1].request()
+    resu['util_active'][0] += req_times[0] # prep done, waiting op
+    yield op
+    facilities[0].release(prep) # op room free, release prep
+    resu['patient_counts'][1] -= 1
+    resu['patient_counts'][2] += 1
+    flow_times[2] = env.now # patient enters operation
+    resu['total_active'][0] += flow_times[2] - flow_times[1] # op start - prep start = prep total
+    
+    yield env.timeout(req_times[1])
+    rec = facilities[2].request()
+    
+    resu['util_active'][1] += req_times[1] # op done
+    yield rec
+    facilities[1].release(op) # op free once rec opens
+    resu['patient_counts'][2] -= 1
+    resu['patient_counts'][3] += 1
+    flow_times[3] = env.now # patient starts recovery
+    resu['total_active'][1] += flow_times[3] - flow_times[2] # op total
+
+    yield env.timeout(req_times[2])
+    facilities[2].release(rec) # rec done
+    resu['patient_counts'][3] -= 1
+    resu['patient_counts'][0] -= 1 # reduce total # of patients in system when rec is done
+    resu['util_active'][2] += req_times[2] # rec done
+    resu['total_active'][2] += req_times[2] # rec does not need to wait, so util% is always 100.
+    flow_times[4] = env.now # patient leaves
+
+# result monitor for things the patient doesnt track directly
+def monitor_mkB(env,conf,resu,facilities):
+    while True:
+        snapshot = {
+            'time': env.now,
+            'patient_counts': resu['patient_counts'].copy() # totals in system at snapshot time
+        }
+        resu['snapshots'].append(snapshot)
+        yield env.timeout(conf['monitor_interval'])
+
+def create_hospital_simulation(env,conf):
+    # simulation results
+    resu = {
+        'patient_flow': [], # all flow times for each patient: arrival/prep/op/rec/leave
+        'patient_counts': [0,0,0,0], # patient count in: total/prep/op/rec
+        'total_active': [0,0,0], # total time of prep/op/rec
+        'util_active': [0,0,0], # active time of prep/op/rec
+        'snapshots': [] # simulation situation at snapshot times, created by monitor process
+    }
+    # seed the rng
+    random.seed(a=conf['seed']) # doesnt need to check for None, seed() already does
+    # create limited resources
+    facilities = [
+        simpy.Resource(env,capacity=conf['rooms'][0]),
+        simpy.Resource(env,capacity=conf['rooms'][1]),
+        simpy.Resource(env,capacity=conf['rooms'][2])
+    ]
+    
+    # create always-on processes
+    env.process(monitor_mkB(env,conf,resu,facilities))
+    env.process(patient_generator_mkB(env,conf,resu,facilities))
+    return resu
