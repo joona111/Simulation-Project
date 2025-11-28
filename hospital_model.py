@@ -229,7 +229,7 @@ def patient_mkB(env,conf,resu,facilities):
 
     flow_times = [env.now, 0, 0, 0, 0] # arrival times at each stage, including release
     resu['patient_flow'].append(flow_times)
-    
+
     # --- individual patient path through system ---
     # note that patient path logging is also timed, to reduce error in total
     # * if it was logged at the end, active patients would not affect simulation results
@@ -240,7 +240,7 @@ def patient_mkB(env,conf,resu,facilities):
     yield prep # wait prep room
     flow_times[1] = env.now # patient taken to a prep room
     resu['patient_counts'][1] += 1
-    
+
     yield env.timeout(req_times[0])
     op = facilities[1].request()
     resu['util_active'][0] += req_times[0] # prep done, waiting op
@@ -250,12 +250,15 @@ def patient_mkB(env,conf,resu,facilities):
     resu['patient_counts'][2] += 1
     flow_times[2] = env.now # patient enters operation
     resu['total_active'][0] += flow_times[2] - flow_times[1] # op start - prep start = prep total
-    
+
     yield env.timeout(req_times[1])
     rec = facilities[2].request()
-    
+
     resu['util_active'][1] += req_times[1] # op done
+    block_start = env.now
     yield rec
+    block_end = env.now
+    resu["or_time_blocked"]+= block_end - block_start # time waiting for rec bed
     facilities[1].release(op) # op free once rec opens
     resu['patient_counts'][2] -= 1
     resu['patient_counts'][3] += 1
@@ -273,28 +276,32 @@ def patient_mkB(env,conf,resu,facilities):
 # result monitor for things the patient doesnt track directly
 def monitor_mkB(env,conf,resu,facilities):
     while True:
+
         snapshot = {
             'time': env.now,
-            'patient_counts': resu['patient_counts'].copy() # totals in system at snapshot time
+            'patient_counts': resu['patient_counts'].copy(), # totals in system at snapshot time
+            'or_queue':len(facilities[1].queue), #length of operating room queue at snapshot time
+            #'or_blocked':blocked#1 if or is blocked at snapshot time,otherwise 0
         }
         resu['snapshots'].append(snapshot)
         yield env.timeout(conf['monitor_interval'])
 
 class hospital_model:
-    
+
     def __init__(self,conf):
         self.env = simpy.Environment()
         self.conf = conf
-        
+
         # simulation results
         self.results = {
             'patient_flow': [], # all flow times for each patient: arrival/prep/op/rec/leave
             'patient_counts': [0,0,0,0], # patient count in: total/prep/op/rec
             'total_active': [0,0,0], # total time of prep/op/rec
             'util_active': [0,0,0], # active time of prep/op/rec
-            'snapshots': [] # simulation situation at snapshot times, created by monitor process
+            'snapshots': [], # simulation situation at snapshot times, created by monitor process
+            "or_time_blocked": 0 # total time operating room was blocked waiting for recovery bed
         }
-        
+
         # seed the rng
         random.seed(a=conf['seed']) # doesnt need to check for None, seed() already does
 
@@ -308,14 +315,15 @@ class hospital_model:
             self.slack_requests.append(facility_slack)
             for j in range(0,conf['total'][i] - conf['staffed'][i]):
                 facility_slack.append(self.facilities[i].request())
-        
+
         # create always-on processes
         self.env.process(monitor_mkB(self.env,conf,self.results,self.facilities))
         self.env.process(patient_generator_mkB(self.env,conf,self.results,self.facilities))
 
     # env run for time, also does config check for facilities
+
     def run_for(self, time):
-        
+
         # refresh facilities according to config at start of time step:
         for i in range(0,len(self.conf['total'])):
             for r in range(0,len(self.slack_requests[i])):
