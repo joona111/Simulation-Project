@@ -214,6 +214,7 @@ def monitor(env, hospital, interval: float):
 # --- alt. versions, used in dense.ipynb ---
 import random
 import simpy
+import copy
 
 # generator starts new patient process according to interval distribution
 def patient_generator_mkB(env,conf,resu,facilities):
@@ -278,7 +279,7 @@ def monitor_mkB(env,conf,resu,facilities):
     while True:
         snapshot = {
             'time': env.now,
-            'patient_counts': resu['patient_counts'].copy(), # totals in system at snapshot time
+            'patient_counts': copy.deepcopy(resu['patient_counts']), # totals in system at snapshot time
             'queues': [len(facilities[0].queue), len(facilities[1].queue), len(facilities[2].queue)] # queues of each stage.
         }
         resu['snapshots'].append(snapshot)
@@ -329,10 +330,5 @@ class hospital_model:
                 self.slack_requests[i].append(self.facilities[i].request())
                 if (len(self.facilities[i].queue) > 0): # request did not go through immediately, move it to be first in prio
                     self.facilities[i].queue.insert(0,self.facilities[i].queue.pop())
-        # print some starting state info for this simulation:
-        print('--- Starting state of this simulation run: ---')
-        print('time: %s' % self.env.now)
-        print('slack requests: %s' % [len(self.slack_requests[0]), len(self.slack_requests[1]), len(self.slack_requests[2])])
-        
         # continue simulation from current time:
         self.env.run(until= self.env.now + time)
