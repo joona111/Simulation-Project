@@ -28,3 +28,13 @@ Simulation-Project/
 ├── dense.ipynb        # minimalist notebook using alt. versions of functions
 |       - only needs hospital_model and config
 ├── requirements.txt   # Python dependencies
+
+## Details
+
+- Twist: mid-simulation parameter updates (see notebook for demo)
++++ Implemented by editing configuration between calls to run_for()
+- Patient process records its own treatment times only at key events, so partially completed processes (at simulation end time) do not count towards result data.
+- When editing the amount of facilities staffed, note that patients currently in a facility take priority, and their processes are not interrupted.
+- UX is not critical to the task, so some failsafes are not implemented:
++++ Exceeding maximum facility total mid-sim will cause error. (staffed > total)
++++ Editing facility total mid-sim can cause error. (total > resource capacity)
