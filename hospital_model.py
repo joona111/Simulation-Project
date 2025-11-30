@@ -298,7 +298,6 @@ class hospital_model:
             'total_active': [0,0,0], # total time of prep/op/rec
             'util_active': [0,0,0], # active time of prep/op/rec
             'snapshots': [], # simulation situation at snapshot times, created by monitor process
-            "or_time_blocked": 0 # total time operating room was blocked waiting for recovery bed
         }
 
         # seed the rng
