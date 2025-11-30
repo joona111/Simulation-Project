@@ -275,13 +275,29 @@ def patient_mkB(env,conf,resu,facilities):
     flow_times[4] = env.now # patient leaves
 
 # result monitor for things the patient doesnt track directly
-def monitor_mkB(env,conf,resu,facilities):
+def monitor_mkB(env, conf, resu, facilities):
     while True:
+        prep_q_len = len(facilities[0].queue)
+        or_q_len   = len(facilities[1].queue)
+        rec_q_len  = len(facilities[2].queue)
+
+        # optional: OR utilization
+        or_resource = facilities[1]
+        or_util = (
+            or_resource.count / or_resource.capacity
+            if or_resource.capacity > 0 else 0.0
+        )
+
         snapshot = {
             'time': env.now,
-            'patient_counts': copy.deepcopy(resu['patient_counts']), # totals in system at snapshot time
-            'queues': [len(facilities[0].queue), len(facilities[1].queue), len(facilities[2].queue)] # queues of each stage.
+            'patient_counts': copy.deepcopy(resu['patient_counts']),
+            'queues': [prep_q_len, or_q_len, rec_q_len],
+            'prep_queue': prep_q_len,
+            'or_queue': or_q_len,
+            'rec_queue': rec_q_len,
+            'or_util': or_util,
         }
+
         resu['snapshots'].append(snapshot)
         yield env.timeout(conf['monitor_interval'])
 
