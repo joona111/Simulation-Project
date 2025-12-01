@@ -23,7 +23,16 @@ Patients arrive over time, occupy resources (prep units, OR, recovery beds), and
 Simulation-Project/
 ├── config.py          # All global simulation parameters + random helpers
 ├── hospital_model.py  # Core SimPy processes (patient flow + monitoring)
-├── run_sim.py         # Entry point to configure and run a simulation
 ├── Hospital.ipynb     # (Optional) Notebook for analysis/visualization
-├── all-in-one.ipynb   # Independent notebook that does not use .py files
 ├── requirements.txt   # Python dependencies
+
+## Details
+
+- Twist: mid-simulation parameter updates (see notebook for demo)
++++ Implemented by editing configuration between calls to run_for()
+- Patient process records its own treatment times only at key events, so partially completed processes (at simulation end time) do not count towards result data.
+- When editing the amount of facilities staffed, note that patients currently in a facility take priority, and their processes are not interrupted.
++++ This may temporarily result in the queue length of a facility exceeding the true value. Can be accounted for after sim in result analysis, if required.
+- UX is not critical to the task, so some failsafes are not implemented:
++++ Exceeding maximum facility total mid-sim will cause error. (staffed > total)
++++ Editing facility total mid-sim can cause error. (total > resource capacity)
