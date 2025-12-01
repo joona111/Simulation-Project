@@ -88,5 +88,5 @@ CONFIG_mkB = {
     'means': [25, 40, 20, 40], # mean times of all stages: next/prep/op/rec
     'total': [5,2,5], # useable + starting slack (unused/offline) capacity for each facility type.
     'staffed': [3, 1, 3], # useable totals of each identical facility: prep/op/rec
-    'monitor_interval': 20 # snapshot interval for non-patient variables, such as queues
+    'monitor_interval': 5 # snapshot interval for non-patient variables, such as queues
 }
