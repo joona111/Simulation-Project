@@ -80,7 +80,7 @@ def seed_all(seed_value: int | None = None) -> None:
 
 
 
-# --- alt. config used in dense.ipynb ---
+# --- alt. config ---
 
 # using lists instead of named vars to keep it short.
 CONFIG_mkB = {

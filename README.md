@@ -23,10 +23,7 @@ Patients arrive over time, occupy resources (prep units, OR, recovery beds), and
 Simulation-Project/
 ├── config.py          # All global simulation parameters + random helpers
 ├── hospital_model.py  # Core SimPy processes (patient flow + monitoring)
-├── run_sim.py         # Entry point to configure and run a simulation
 ├── Hospital.ipynb     # (Optional) Notebook for analysis/visualization
-├── dense.ipynb        # minimalist notebook using alt. versions of functions
-|       - only needs hospital_model and config
 ├── requirements.txt   # Python dependencies
 
 ## Details

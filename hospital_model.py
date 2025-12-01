@@ -211,7 +211,10 @@ def monitor(env, hospital, interval: float):
 
 
 
-# --- alt. versions, used in dense.ipynb ---
+
+# --- alt. versions ---
+
+
 import random
 import simpy
 import copy
