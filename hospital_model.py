@@ -223,13 +223,23 @@ import copy
 def patient_generator_mkB(env,conf,resu,facilities):
     while True:
         env.process(patient_mkB(env,conf,resu,facilities))
-        yield env.timeout(random.expovariate(1/conf['means'][0]))
+        t_out = random.expovariate(1/conf['means'][0])
+        if (conf['unif'][0] != None):
+            t_out = random.uniform(conf['unif'][0][0],conf['unif'][0][1])
+        yield env.timeout(t_out)
 
 # individual patient, keeps track of actual service times for each stage: required time and extra waiting
 def patient_mkB(env,conf,resu,facilities):
     # minimum processing times for each stage, using config
     e = random.expovariate
     req_times = [e(1/conf['means'][1]),e(1/conf['means'][2]),e(1/conf['means'][3])]
+    
+    if (conf['unif'][1] != None):
+        req_times[0] = random.uniform(conf['unif'][1][0],conf['unif'][1][1])
+    if (conf['unif'][2] != None):
+        req_times[1] = random.uniform(conf['unif'][2][0],conf['unif'][2][1])
+    if (conf['unif'][3] != None):
+        req_times[2] = random.uniform(conf['unif'][3][0],conf['unif'][3][1])
 
     flow_times = [env.now, 0, 0, 0, 0] # arrival times at each stage, including release
     resu['patient_flow'].append(flow_times)
