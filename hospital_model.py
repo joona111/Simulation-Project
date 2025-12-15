@@ -114,19 +114,22 @@ class hospital_model:
         # create always-on processes
         self.env.process(monitor_mkB(self.env,conf,self.results,self.facilities))
         self.env.process(patient_generator_mkB(self.env,conf,self.results,self.facilities))
-
     
     # env run for time, also does config check for facilities
     def run_for(self, time):
         # refresh facilities according to config at start of time step:
-        for i in range(0,len(self.conf['total'])): # loop each facility type.
-            # pop and release previous slack state
-            for j in range(0,len(self.slack_requests[i])):
-                self.facilities[i].release(self.slack_requests[i].pop())
-            # create new slack state
-            for j in range(0,self.conf['total'][i] - self.conf['staffed'][i]):
-                self.slack_requests[i].append(self.facilities[i].request())
-                if (len(self.facilities[i].queue) > 0): # request did not go through immediately, move it to be first in prio
-                    self.facilities[i].queue.insert(0,self.facilities[i].queue.pop())
+        for i in range(len(self.conf['total'])): # loop each facility type.
+            prevlen = len(self.slack_requests[i])
+            newlen = self.conf['total'][i] - self.conf['staffed'][i]
+            # if more, add new
+            if (newlen > prevlen):
+                for j in range(newlen - prevlen):
+                    self.slack_requests[i].append(self.facilities[i].request())
+                    if (len(self.facilities[i].queue) > 0): # request did not go through immediately, move it to be first in prio
+                        self.facilities[i].queue.insert(0,self.facilities[i].queue.pop())
+            # if less, release
+            if (prevlen > newlen):
+                for j in range(prevlen - newlen):
+                    self.facilities[i].release(self.slack_requests[i].pop())
         # continue simulation from current time:
         self.env.run(until= self.env.now + time)
